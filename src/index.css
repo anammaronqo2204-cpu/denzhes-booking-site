@@ -85,7 +85,8 @@ h1 em, h2 em { color: #a4604b; font-weight: 500; }
 .category-tabs button { background: none; border: 0; color: #6c6e65; padding: 13px 18px; font-size: 10px; letter-spacing: .07em; text-transform: uppercase; border-bottom: 2px solid transparent; }
 .category-tabs button.active { color: #33382f; border-bottom-color: #a4604b; }
 .service-grid { max-width: 1280px; margin: auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: #b9baaf; border: 1px solid #b9baaf; }
-.service-item { min-width: 0; background: #efede5; }
+.service-item { min-width: 0; background: #efede5; position: relative; z-index: 1; }
+.service-item.is-open { z-index: 30; }
 .service-item figure { height: 330px; margin: 0; overflow: hidden; position: relative; background: #ccc; }
 .service-item figure img { height: 100%; object-fit: cover; filter: saturate(.78); transition: transform .7s cubic-bezier(.2,.7,.2,1); }
 .service-item:hover figure img { transform: scale(1.025); }
@@ -102,7 +103,7 @@ h1 em, h2 em { color: #a4604b; font-weight: 500; }
 .variant-select small { color: #888980; font-size: 7px; letter-spacing: .13em; text-transform: uppercase; }
 .variant-select strong { color: #596151; font: 600 15px 'Cormorant Garamond', serif; }
 .variant-select svg { width: 16px; }
-.variant-menu { position: absolute; z-index: 10; left: 0; right: 0; top: calc(100% + 4px); background: #f5f2ea; border: 1px solid #babbb0; box-shadow: 0 16px 30px rgba(40,45,37,.13); animation: slideDown .18s ease both; }
+.variant-menu { position: absolute; z-index: 10; left: 0; right: 0; top: calc(100% + 4px); background: #f5f2ea; border: 1px solid #babbb0; box-shadow: 0 16px 30px rgba(40,45,37,.13); animation: slideDown .18s ease both; max-height: 240px; overflow-y: auto; }
 .variant-menu button { width: 100%; background: none; border: 0; border-bottom: 1px solid #d2d0c6; display: flex; justify-content: space-between; padding: 13px 15px; color: #3d4239; font-size: 11px; }
 .variant-menu button:hover, .variant-menu button.selected { background: #dce0d5; }
 .service-book { width: 100%; border: 0; background: #343a31; color: #f3efe5; padding: 15px; display: flex; justify-content: space-between; align-items: center; font-size: 10px; letter-spacing: .04em; }
