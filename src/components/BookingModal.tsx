@@ -13,6 +13,41 @@ interface BookingModalProps {
   onBookingCreated: (booking: Booking) => void;
 }
 
+function buildWhatsAppLink({
+  clientName,
+  service,
+  date,
+  time,
+  assignedStaff,
+  deposit,
+  reference,
+}: {
+  clientName: string;
+  service: string;
+  date: string;
+  time: string;
+  assignedStaff?: string;
+  deposit: number;
+  reference: string;
+}) {
+  const denzhePhone = '27663773941'; // no +, no spaces, no leading 0
+
+  const lines = [
+    `Hi Denzhe! It's ${clientName}.`,
+    `I've booked: ${service}`,
+    `Date: ${date} at ${time}`,
+  ];
+
+  if (assignedStaff) lines.push(`With: ${assignedStaff}`);
+
+  lines.push(`I've paid a deposit of R${deposit}.`);
+  lines.push(`Reference: ${reference}`);
+  lines.push(`Just confirming this booking on your end 🙏`);
+
+  const message = encodeURIComponent(lines.join('\n'));
+  return `https://wa.me/${denzhePhone}?text=${message}`;
+}
+
 export default function BookingModal({ isOpen, onClose, service, selectedVariant, bookings, settings, onBookingCreated }: BookingModalProps) {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
@@ -451,7 +486,15 @@ export default function BookingModal({ isOpen, onClose, service, selectedVariant
                 </div>
               </div>
               <a
-                href="https://wa.me/27663773941"
+                href={buildWhatsAppLink({
+                  clientName: formData.name,
+                  service: `${service.name}${sizeLabel}`,
+                  date: formData.date,
+                  time: formData.time,
+                  assignedStaff: team === 'braiders' ? assignedStaff : undefined,
+                  deposit: depositAmount,
+                  reference,
+                })}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 bg-blush-dark text-white px-6 py-3 rounded-xl text-sm font-medium hover:bg-charcoal transition-colors"
