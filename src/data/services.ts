@@ -14,6 +14,7 @@ export interface Service {
   duration: string;
   description: string;
   active?: boolean;
+  team?: 'denzhe' | 'braiders';
 }
 
 // Client-provided imagery
@@ -349,6 +350,7 @@ export const services: Service[] = [
     price: 550,
     duration: '~5-6 hrs',
     description: 'Straight back or lemonade with hands, toes and lashes.',
+    team: 'braiders',
   },
   {
     id: 'combo-braids-full',
@@ -359,6 +361,7 @@ export const services: Service[] = [
     price: 750,
     duration: '~6-7 hrs',
     description: 'Tribal, Fulani, Milano, knotless or goddess braids with hands, lashes and toes.',
+    team: 'braiders',
   },
   {
     id: 'combo-hands-lashes',
@@ -479,3 +482,14 @@ export const categories = [
   { id: 'lashes', label: 'Lashes', emoji: '👁️' },
   { id: 'pondo', label: 'Pondo / Ponytail', emoji: '🎀' },
 ];
+
+// Braiding categories are handled by the 2-person braiding team; everything
+// else (nails, installations, lashes, wig styling/customisation, pondo) is
+// Denzhe's own work. Combos are mixed, so those two use an explicit
+// `team` override above instead of falling back to their category.
+const BRAIDING_CATEGORIES: Service['category'][] = ['braids', 'tribal', 'cornrows'];
+
+export function resolveServiceTeam(service: Service): 'denzhe' | 'braiders' {
+  if (service.team) return service.team;
+  return BRAIDING_CATEGORIES.includes(service.category) ? 'braiders' : 'denzhe';
+}

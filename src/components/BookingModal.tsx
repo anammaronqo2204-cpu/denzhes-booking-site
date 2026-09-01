@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Service, ServiceVariant } from '../data/services';
-import { compressImage, createReference, durationToMinutes, type Booking, type BusinessSettings } from '../data/adminStore';
+import { resolveServiceTeam } from '../data/services';
+import { checkSlotAvailability, compressImage, createReference, durationToMinutes, type Booking, type BusinessSettings } from '../data/adminStore';
 
 interface BookingModalProps {
   isOpen: boolean;
@@ -26,6 +27,7 @@ export default function BookingModal({ isOpen, onClose, service, selectedVariant
   const [depositProof, setDepositProof] = useState('');
   const [depositProofName, setDepositProofName] = useState('');
   const [latePolicyAccepted, setLatePolicyAccepted] = useState(false);
+  const [assignedStaff, setAssignedStaff] = useState<string | undefined>();
   const [reference, setReference] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploadingProof, setIsUploadingProof] = useState(false);
@@ -35,6 +37,7 @@ export default function BookingModal({ isOpen, onClose, service, selectedVariant
   const price = selectedVariant ? selectedVariant.price : service.price;
   const sizeLabel = selectedVariant ? ` (${selectedVariant.label})` : '';
   const depositAmount = Math.round((Number(price) || 0) * (settings.depositPercent / 100));
+  const team = resolveServiceTeam(service);
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
@@ -59,6 +62,8 @@ export default function BookingModal({ isOpen, onClose, service, selectedVariant
       depositProof,
       depositProofName,
       latePolicyAccepted,
+      team,
+      assignedStaff,
       status: 'pending',
       createdAt: new Date().toISOString(),
     });
@@ -75,6 +80,7 @@ export default function BookingModal({ isOpen, onClose, service, selectedVariant
     setDepositProof('');
     setDepositProofName('');
     setLatePolicyAccepted(false);
+    setAssignedStaff(undefined);
     setReference('');
     onClose();
   };
@@ -179,7 +185,7 @@ export default function BookingModal({ isOpen, onClose, service, selectedVariant
                 <input
                   type="date"
                   value={formData.date}
-                  onChange={e => setFormData({ ...formData, date: e.target.value, time: '' })}
+                  onChange={e => { setFormData({ ...formData, date: e.target.value, time: '' }); setAssignedStaff(undefined); }}
                   min={new Date().toISOString().split('T')[0]}
                   className="w-full px-4 py-3 rounded-xl border border-soft-border bg-cream/50 focus:outline-none focus:border-blush focus:ring-2 focus:ring-blush/20 transition-all text-sm"
                 />
@@ -188,19 +194,19 @@ export default function BookingModal({ isOpen, onClose, service, selectedVariant
                 <label className="block text-sm font-medium text-charcoal mb-1.5">Preferred Time</label>
                 <div className="grid grid-cols-3 gap-2">
                   {['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'].map(t => {
-                    const toMinutes = (value: string) => { const [hours, minutes] = value.split(':').map(Number); return hours * 60 + minutes; };
-                    const start = toMinutes(t);
-                    const end = start + durationToMinutes(service.duration);
-                    const reserved = bookings.some(booking => {
-                      if (booking.date !== formData.date || !booking.time || booking.status === 'declined') return false;
-                      const bookedStart = toMinutes(booking.time);
-                      const bookedEnd = bookedStart + durationToMinutes(booking.duration);
-                      return start < bookedEnd && end > bookedStart;
+                    const { available, assignedStaff: candidateStaff } = checkSlotAvailability({
+                      team,
+                      date: formData.date,
+                      time: t,
+                      durationMinutes: durationToMinutes(service.duration),
+                      bookings,
+                      braiderNames: settings.braiderNames,
                     });
+                    const reserved = !available;
                     return <button
                       key={t}
                       disabled={reserved || !formData.date}
-                      onClick={() => setFormData({ ...formData, time: t })}
+                      onClick={() => { setFormData({ ...formData, time: t }); setAssignedStaff(candidateStaff); }}
                       className={`py-2.5 rounded-xl text-sm font-medium transition-all ${
                         formData.time === t
                           ? 'bg-blush text-white shadow-md shadow-blush/25'
@@ -212,6 +218,9 @@ export default function BookingModal({ isOpen, onClose, service, selectedVariant
                   })}
                 </div>
               </div>
+              {team === 'braiders' && formData.time && assignedStaff && (
+                <p className="text-[11px] text-warm-gray -mt-2">You'll be braided by <strong className="text-charcoal">{assignedStaff}</strong> at this time.</p>
+              )}
               <div>
                 <label className="block text-sm font-medium text-charcoal mb-1.5">Notes (optional)</label>
                 <textarea
@@ -245,6 +254,12 @@ export default function BookingModal({ isOpen, onClose, service, selectedVariant
                   <div className="flex justify-between text-sm">
                     <span className="text-warm-gray">Time</span>
                     <span className="font-medium text-charcoal">{formData.time}</span>
+                  </div>
+                )}
+                {team === 'braiders' && assignedStaff && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-warm-gray">Braider</span>
+                    <span className="font-medium text-charcoal">{assignedStaff}</span>
                   </div>
                 )}
                 <div className="border-t border-soft-border pt-2 mt-2 flex justify-between">
@@ -420,6 +435,12 @@ export default function BookingModal({ isOpen, onClose, service, selectedVariant
                   <span className="text-warm-gray">Service</span>
                   <span className="font-medium text-charcoal">{service.name}{sizeLabel}</span>
                 </div>
+                {team === 'braiders' && assignedStaff && (
+                  <div className="flex justify-between">
+                    <span className="text-warm-gray">Braider</span>
+                    <span className="font-medium text-charcoal">{assignedStaff}</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-warm-gray">Total Price</span>
                   <span className="font-medium text-charcoal">R{price}</span>

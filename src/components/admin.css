@@ -93,6 +93,7 @@
 .service-admin-list article > button.danger { color: #9a5c50; }
 
 .admin-settings form { width: min(100%, 680px); }
+.admin-hint { font-size: 11px; line-height: 1.6; color: #77776d; margin: -4px 0 6px; }
 .settings-split, .editor-split { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
 .staff-layout { display: grid; grid-template-columns: 1.2fr .8fr; gap: 50px; align-items: start; }
 .staff-list { border-top: 1px solid #c9c6bb; }

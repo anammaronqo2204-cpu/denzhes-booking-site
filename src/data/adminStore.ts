@@ -24,6 +24,8 @@ export interface Booking {
   depositProof?: string;
   depositProofName?: string;
   latePolicyAccepted?: boolean;
+  team?: 'denzhe' | 'braiders';
+  assignedStaff?: string;
   status: BookingStatus;
   createdAt: string;
 }
@@ -54,6 +56,7 @@ export interface BusinessSettings {
   payShapNumber: string;
   payShapName: string;
   payShapNote: string;
+  braiderNames: [string, string];
 }
 
 const KEYS = {
@@ -81,6 +84,7 @@ export const defaultSettings: BusinessSettings = {
   payShapNumber: '0663773941',
   payShapName: 'Denzhe Nevhuthanda',
   payShapNote: 'PayShap is instant and cheaper than standard EFT (which can take 1–3 business days to clear). Works with Tymebank/GoTyme Bank and Capitec.',
+  braiderNames: ['Braider 1', 'Braider 2'],
 };
 
 const defaultStaff: StaffAccount[] = [
@@ -119,6 +123,50 @@ export function durationToMinutes(duration = '~1 hr') {
   const values = duration.match(/\d+(?:\.\d+)?/g)?.map(Number) || [1];
   const longest = Math.max(...values);
   return /min/i.test(duration) ? longest : longest * 60;
+}
+
+const timeToMinutes = (value: string) => {
+  const [hours, minutes] = value.split(':').map(Number);
+  return hours * 60 + minutes;
+};
+
+/**
+ * Works out whether a given slot is bookable for a service's team, and if so
+ * which staff member it should be assigned to.
+ *
+ * - Denzhe is a single resource: any overlapping Denzhe-team booking blocks
+ *   the slot entirely (unchanged from the original single-person logic).
+ * - Braiders are a 2-person team: the slot is only fully booked once BOTH
+ *   braider names are already taken by an overlapping booking. Whichever
+ *   braider name isn't taken gets auto-assigned.
+ */
+export function checkSlotAvailability(params: {
+  team: 'denzhe' | 'braiders';
+  date: string;
+  time: string;
+  durationMinutes: number;
+  bookings: Booking[];
+  braiderNames: [string, string];
+}): { available: boolean; assignedStaff?: string } {
+  const { team, date, time, durationMinutes, bookings, braiderNames } = params;
+  const start = timeToMinutes(time);
+  const end = start + durationMinutes;
+
+  const overlapping = bookings.filter(booking => {
+    if (booking.date !== date || !booking.time || booking.status === 'declined') return false;
+    if ((booking.team || 'denzhe') !== team) return false;
+    const bookedStart = timeToMinutes(booking.time);
+    const bookedEnd = bookedStart + durationToMinutes(booking.duration);
+    return start < bookedEnd && end > bookedStart;
+  });
+
+  if (team === 'denzhe') {
+    return { available: overlapping.length === 0, assignedStaff: overlapping.length === 0 ? 'Denzhe' : undefined };
+  }
+
+  const takenNames = new Set(overlapping.map(booking => booking.assignedStaff));
+  const freeBraider = braiderNames.find(name => !takenNames.has(name));
+  return { available: Boolean(freeBraider), assignedStaff: freeBraider };
 }
 
 export function phoneToWhatsApp(phone: string) {
