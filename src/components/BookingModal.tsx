@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Service, ServiceVariant } from '../data/services';
-import { compressImage, createReference, durationToMinutes, type Booking } from '../data/adminStore';
+import { compressImage, createReference, durationToMinutes, type Booking, type BusinessSettings } from '../data/adminStore';
 
 interface BookingModalProps {
   isOpen: boolean;
@@ -8,10 +8,11 @@ interface BookingModalProps {
   service: Service | null;
   selectedVariant?: ServiceVariant;
   bookings: Booking[];
+  settings: BusinessSettings;
   onBookingCreated: (booking: Booking) => void;
 }
 
-export default function BookingModal({ isOpen, onClose, service, selectedVariant, bookings, onBookingCreated }: BookingModalProps) {
+export default function BookingModal({ isOpen, onClose, service, selectedVariant, bookings, settings, onBookingCreated }: BookingModalProps) {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     name: '',
@@ -22,13 +23,18 @@ export default function BookingModal({ isOpen, onClose, service, selectedVariant
   });
   const [stylePhoto, setStylePhoto] = useState('');
   const [stylePhotoName, setStylePhotoName] = useState('');
+  const [depositProof, setDepositProof] = useState('');
+  const [depositProofName, setDepositProofName] = useState('');
+  const [latePolicyAccepted, setLatePolicyAccepted] = useState(false);
   const [reference, setReference] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploadingProof, setIsUploadingProof] = useState(false);
 
   if (!isOpen || !service) return null;
 
   const price = selectedVariant ? selectedVariant.price : service.price;
   const sizeLabel = selectedVariant ? ` (${selectedVariant.label})` : '';
+  const depositAmount = Math.round((Number(price) || 0) * (settings.depositPercent / 100));
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
@@ -49,12 +55,16 @@ export default function BookingModal({ isOpen, onClose, service, selectedVariant
       notes: formData.notes,
       stylePhoto,
       stylePhotoName,
+      depositAmount,
+      depositProof,
+      depositProofName,
+      latePolicyAccepted,
       status: 'pending',
       createdAt: new Date().toISOString(),
     });
     setReference(id);
     setIsSubmitting(false);
-    setStep(3);
+    setStep(4);
   };
 
   const handleClose = () => {
@@ -62,11 +72,15 @@ export default function BookingModal({ isOpen, onClose, service, selectedVariant
     setFormData({ name: '', phone: '', date: '', time: '', notes: '' });
     setStylePhoto('');
     setStylePhotoName('');
+    setDepositProof('');
+    setDepositProofName('');
+    setLatePolicyAccepted(false);
     setReference('');
     onClose();
   };
 
   const isFormValid = formData.name && formData.phone && formData.date && formData.time;
+  const isDepositStepValid = Boolean(depositProof) && latePolicyAccepted;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
@@ -97,7 +111,7 @@ export default function BookingModal({ isOpen, onClose, service, selectedVariant
 
         {/* Steps indicator */}
         <div className="flex items-center gap-2 px-6 pt-5">
-          {[1, 2, 3].map(s => (
+          {[1, 2, 3, 4].map(s => (
             <div key={s} className="flex items-center gap-2 flex-1">
               <div className={`h-1 flex-1 rounded-full transition-colors ${
                 step >= s ? 'bg-blush' : 'bg-soft-border'
@@ -247,8 +261,119 @@ export default function BookingModal({ isOpen, onClose, service, selectedVariant
                   Back
                 </button>
                 <button
+                  onClick={() => setStep(3)}
+                  disabled={!isFormValid}
+                  className="flex-[2] py-3 rounded-xl bg-blush text-white font-medium text-sm hover:bg-blush-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Continue to Deposit
+                </button>
+              </div>
+            </div>
+          )}
+
+          {step === 3 && (
+            <div className="space-y-4 animate-fade-in">
+              <div>
+                <p className="text-xs uppercase tracking-wider text-warm-gray font-medium mb-1">Secure Your Booking</p>
+                <p className="text-xs text-warm-gray leading-relaxed">
+                  A {settings.depositPercent}% deposit is required to reserve this slot. Pay the amount below, then upload your Proof of Payment.
+                </p>
+              </div>
+
+              <div className="bg-blush-light/40 border border-blush/30 rounded-xl p-4 space-y-2 text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="text-[9px] uppercase tracking-wider font-bold text-blush-dark bg-white px-2 py-0.5 rounded-full">Recommended</span>
+                  <span className="text-xs font-medium text-charcoal">Pay via PayShap — instant &amp; cheaper</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-warm-gray">PayShap Number</span>
+                  <span className="font-mono font-medium text-charcoal">{settings.payShapNumber}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-warm-gray">Name</span>
+                  <span className="font-medium text-charcoal">{settings.payShapName}</span>
+                </div>
+                <p className="text-[10px] text-warm-gray pt-1">{settings.payShapNote}</p>
+              </div>
+
+              <details className="group">
+                <summary className="text-xs text-warm-gray cursor-pointer select-none">Prefer standard EFT instead? (takes 1–3 days to clear)</summary>
+                <div className="bg-cream rounded-xl p-4 mt-2 space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-warm-gray">Bank</span>
+                    <span className="font-medium text-charcoal">{settings.bankName}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-warm-gray">Account Name</span>
+                    <span className="font-medium text-charcoal">{settings.accountName}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-warm-gray">Account Number</span>
+                    <span className="font-mono font-medium text-charcoal">{settings.accountNumber}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-warm-gray">Branch Code</span>
+                    <span className="font-mono font-medium text-charcoal">{settings.branchCode}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-warm-gray">Account Type</span>
+                    <span className="font-medium text-charcoal">{settings.accountType}</span>
+                  </div>
+                </div>
+              </details>
+
+              <div className="bg-cream rounded-xl p-4 space-y-2 text-sm">
+                <p className="text-[10px] text-warm-gray">{settings.paymentReferenceNote}</p>
+                <div className="border-t border-soft-border pt-2 mt-2 flex justify-between">
+                  <span className="font-medium text-charcoal">Deposit Due ({settings.depositPercent}%)</span>
+                  <span className="text-lg font-bold text-blush-dark">R{depositAmount}</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-charcoal mb-1.5">Proof of Payment</label>
+                <label className="relative block cursor-pointer border border-dashed border-soft-border bg-cream/50 px-4 py-4 text-sm text-warm-gray hover:border-blush transition-colors">
+                  <input type="file" accept="image/*,.pdf" className="absolute inset-0 opacity-0 cursor-pointer" onChange={async event => {
+                    const file = event.target.files?.[0];
+                    if (!file) return;
+                    setIsUploadingProof(true);
+                    setDepositProofName(file.name);
+                    if (file.type.startsWith('image/')) {
+                      setDepositProof(await compressImage(file));
+                    } else {
+                      const reader = new FileReader();
+                      reader.onload = () => setDepositProof(String(reader.result));
+                      reader.readAsDataURL(file);
+                    }
+                    setIsUploadingProof(false);
+                  }} />
+                  {isUploadingProof ? 'Uploading...' : (depositProofName || 'Upload screenshot or PDF of your payment')}
+                </label>
+                <p className="mt-1.5 text-[10px] leading-relaxed text-warm-gray">Your booking will not be reserved until Denzhe verifies this deposit.</p>
+              </div>
+
+              <label className="flex items-start gap-3 bg-cream/70 border border-soft-border rounded-xl p-4 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={latePolicyAccepted}
+                  onChange={e => setLatePolicyAccepted(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 accent-blush shrink-0"
+                />
+                <span className="text-[11px] leading-relaxed text-charcoal">
+                  I understand that if I am <strong>30 minutes to 1 hour late</strong> for my appointment, I will <strong>forfeit my deposit and my booking</strong>, with <strong>no refund</strong> given after 30 minutes of my RSVP time.
+                </span>
+              </label>
+
+              <div className="flex gap-3 mt-2">
+                <button
+                  onClick={() => setStep(2)}
+                  className="flex-1 py-3 rounded-xl border border-soft-border text-charcoal font-medium text-sm hover:bg-cream transition-colors"
+                >
+                  Back
+                </button>
+                <button
                   onClick={handleSubmit}
-                  disabled={!isFormValid || isSubmitting}
+                  disabled={!isDepositStepValid || isSubmitting}
                   className="flex-[2] py-3 rounded-xl bg-blush text-white font-medium text-sm hover:bg-blush-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {isSubmitting ? (
@@ -264,7 +389,7 @@ export default function BookingModal({ isOpen, onClose, service, selectedVariant
             </div>
           )}
 
-          {step === 3 && (
+          {step === 4 && (
             <div className="text-center py-6 animate-fade-in space-y-4">
               <div className="w-16 h-16 bg-blush-light rounded-full flex items-center justify-center mx-auto">
                 <svg className="w-8 h-8 text-blush-dark" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -279,7 +404,7 @@ export default function BookingModal({ isOpen, onClose, service, selectedVariant
                   Your RSVP for <strong>{service.name}{sizeLabel}</strong> has been sent.
                 </p>
                 <p className="text-warm-gray text-sm mt-1">
-                  Denzhe will reach out on WhatsApp with payment details.
+                  Denzhe will verify your deposit and confirm your slot on WhatsApp.
                 </p>
               </div>
               <div className="bg-cream rounded-xl p-4 text-left space-y-2 text-sm">
@@ -296,8 +421,12 @@ export default function BookingModal({ isOpen, onClose, service, selectedVariant
                   <span className="font-medium text-charcoal">{service.name}{sizeLabel}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-warm-gray">Amount</span>
-                  <span className="font-bold text-blush-dark">R{price}</span>
+                  <span className="text-warm-gray">Total Price</span>
+                  <span className="font-medium text-charcoal">R{price}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-warm-gray">Deposit Paid</span>
+                  <span className="font-bold text-blush-dark">R{depositAmount}</span>
                 </div>
               </div>
               <a
@@ -324,3 +453,4 @@ export default function BookingModal({ isOpen, onClose, service, selectedVariant
     </div>
   );
 }
+

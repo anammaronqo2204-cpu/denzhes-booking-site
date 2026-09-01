@@ -20,6 +20,10 @@ export interface Booking {
   address?: string;
   hairpiece?: string;
   distanceKm?: number;
+  depositAmount?: number;
+  depositProof?: string;
+  depositProofName?: string;
+  latePolicyAccepted?: boolean;
   status: BookingStatus;
   createdAt: string;
 }
@@ -40,6 +44,16 @@ export interface BusinessSettings {
   hours: string;
   calloutFee: number;
   ratePerKm: number;
+  depositPercent: number;
+  bankName: string;
+  accountName: string;
+  accountNumber: string;
+  branchCode: string;
+  accountType: string;
+  paymentReferenceNote: string;
+  payShapNumber: string;
+  payShapName: string;
+  payShapNote: string;
 }
 
 const KEYS = {
@@ -57,6 +71,16 @@ export const defaultSettings: BusinessSettings = {
   hours: 'Mon to Sat, 09:00 to 18:00',
   calloutFee: 150,
   ratePerKm: 12,
+  depositPercent: 50,
+  bankName: 'FNB (First National Bank)',
+  accountName: "Denzhe's Beauty Bar",
+  accountNumber: '00000000000',
+  branchCode: '250655',
+  accountType: 'Cheque / Current Account',
+  paymentReferenceNote: 'Please use your booking reference as the payment reference.',
+  payShapNumber: '0663773941',
+  payShapName: 'Denzhe Nevhuthanda',
+  payShapNote: 'PayShap is instant and cheaper than standard EFT (which can take 1–3 business days to clear). Works with Tymebank/GoTyme Bank and Capitec.',
 };
 
 const defaultStaff: StaffAccount[] = [
